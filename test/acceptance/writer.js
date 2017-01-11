@@ -1,9 +1,10 @@
 
 var Connection = require('../../lib/connection');
-var utils = require('../utils');
 var assert = require('assert');
 var nsq = require('../..');
+var sinon = require('sinon');
 var uid = require('uid');
+var utils = require('../utils');
 
 describe('Writer#publish()', function(){
   var topic = uid();
@@ -75,6 +76,20 @@ describe('Writer#publish()', function(){
     });
 
     sub.connect();
+  })
+
+  it('should call close callback and destroy pending connections when there are no ready connections', function (done) {
+    sinon.spy(Connection.prototype, 'destroy');
+    sinon.spy(Connection.prototype, 'close');
+
+    var pub = nsq.writer();
+
+    pub.close(function() {
+      Connection.prototype.destroy.called.should.be.true();
+      Connection.prototype.close.called.should.be.false();
+
+      done();
+    });
   })
 
   describe('with an array', function(){
