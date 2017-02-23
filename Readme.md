@@ -119,6 +119,9 @@ Events:
 - `error` (err)
 
 ### reader#close([fn])
+Gracefully close the reader's connection(s) and fire the optional [fn] when completed.
+
+### reader#end([fn])
 Close the reader's connection(s) and fire the optional [fn] when completed.
 
 ### nsq.writer([options|address])

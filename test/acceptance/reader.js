@@ -220,4 +220,73 @@ describe('Reader', function(){
       setTimeout(done, 500);
     })
   })
+
+  describe('Reader#end(fn)', function(){
+    it('should end if there are no connections', function(done){
+      var sub = nsq.reader({
+        topic: topic,
+        channel: 'reader',
+        nsqd: [],
+      });
+
+      sub.end(done);
+    })
+
+    it('should end all connections', function(done){
+      var sub = nsq.reader({
+        topic: topic,
+        channel: 'reader',
+        nsqd: ['0.0.0.0:4150'],
+      });
+
+      sub.on('ready', function(){
+        setTimeout(function(){
+          sub.end(done);
+        }, 100);
+      });
+    })
+
+    it('should end all connections even if there are in-flight messages', function(done){
+      var pub = nsq.writer();
+
+      var sub = nsq.reader({
+        topic: topic,
+        channel: 'reader',
+        nsqd: ['0.0.0.0:4150'],
+        maxInFlight: 10
+      });
+
+      pub.on('ready', function(){
+        pub.publish(topic, {});
+      });
+
+      sub.on('message', function(msg){
+        var pending = 0;
+        sub.conns.each(function(conn){
+          pending += conn.inFlight;
+        });
+
+        assert(pending === 1);
+        sub.end(done);
+      });
+    })
+
+    it('should stop polling nsqlookupd if reader had been closed', function(done){
+      var sub = nsq.reader({
+        topic: topic,
+        channel: 'reader',
+        nsqlookupd: ['0.0.0.0:4161'],
+        pollInterval: 100
+      });
+
+      setImmediate(function(){
+        sub.end();
+        sub.lookup = function(fn){
+          done(new Error('setInterval() is still running'));
+        };
+      });
+
+      setTimeout(done, 500);
+    })
+  })
 });
