@@ -15,9 +15,9 @@
     "backo": "^1.1.0",
     "bignum": "^0.12.5",
     "debug": "^2.2.0",
-    "ms": "^0.7.1",
+    "ms": "^2.1.1",
     "node-int64": "^0.4.0",
-    "nsq-lookup": "^1.0.2",
+    "nsq-lookup": "~3.0.0",
     "set-component": "^1.0.0"
   },
   "devDependencies": {
@@ -26,7 +26,7 @@
     "mocha": "^3.1.0",
     "should": "^11.1.0",
     "sinon": "^1.17.7",
-    "superagent": "^0.17.0",
+    "superagent": "~3.5.0",
     "uid": "^0.0.2"
   },
   "license": "MIT"
