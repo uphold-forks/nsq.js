@@ -13,10 +13,9 @@
   ],
   "dependencies": {
     "backo": "^1.1.0",
-    "bignum": "^0.12.5",
     "debug": "^2.2.0",
+    "int64-buffer": "^0.1.10",
     "ms": "^2.1.1",
-    "node-int64": "^0.4.0",
     "nsq-lookup": "~3.0.0",
     "set-component": "^1.0.0"
   },
