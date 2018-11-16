@@ -93,6 +93,24 @@ describe('Connection#connect(fn)', function(){
 })
 
 describe('Connection#command(name, args, data)', function(){
+  it('should call callbacks with error when connection is closed', function (done) {
+    var conn = new Connection;
+
+    conn.on('ready', function(){
+      conn.sock.write = function () {
+        // trigger a socket 'close' event
+        conn.sock.end();
+      };
+
+      conn.command('PUB', ['events'], new Buffer('foo bar'), function() {
+        conn.callbacks.should.eql([]);
+        done();
+      });
+    });
+
+    conn.connect();
+  })
+
   it('should write command, args and data', function(){
     var conn = new Connection;
     var writes = [];
