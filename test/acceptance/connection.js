@@ -68,11 +68,14 @@ describe('Connection', function(){
     conn.on('error', function(){});
     conn.on('ready', function(){
       conn.sock.destroy();
-      conn.publish(topic, 'something', function(err){
+      conn.publish(topic, 'something', function(){
+        console.log('called')
         called++;
       });
-      assert.equal(called, 1);
-      done();
+      process.nextTick(() => {
+        assert.equal(called, 1);
+        done();
+      })
     });
 
     conn.connect();

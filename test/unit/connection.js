@@ -93,16 +93,19 @@ describe('Connection#connect(fn)', function(){
 })
 
 describe('Connection#command(name, args, data)', function(){
-  it('should call callbacks with error when connection is closed', function (done) {
+  it('should call callbacks with error when connection is closed', function(done){
     var conn = new Connection;
 
     conn.on('ready', function(){
-      conn.sock.write = function () {
+      const sockWrite = conn.sock.write;
+      conn.sock.write = function(...args){
+        sockWrite.apply(conn.sock, args);
+
         // trigger a socket 'close' event
         conn.sock.end();
       };
 
-      conn.command('PUB', ['events'], new Buffer('foo bar'), function() {
+      conn.command('PUB', ['events'], new Buffer('foo bar'), function(){
         conn.callbacks.should.eql([]);
         done();
       });
