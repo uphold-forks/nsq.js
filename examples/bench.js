@@ -1,37 +1,39 @@
+'use strict';
 
 /**
  * Module dependencies.
  */
 
-var nsq = require('..');
+const nsq = require('..');
 
-// subscribe
-
-var reader = nsq.reader({
+// Subscribe.
+const reader = nsq.reader({
   nsqd: ['0.0.0.0:4150'],
   topic: 'events',
   channel: 'ingestion',
   maxInFlight: 1000
 });
 
-var n = 0;
-reader.on('message', function(msg){
-  process.stdout.write('\r  ' + n++);
+let n = 0;
+const runtime = parseInt(process.argv[2], 10) || 10000;
+
+reader.on('message', msg => {
+  process.stdout.write(`\r  ${n++}`);
   msg.finish();
 });
 
-// publish
-
-var writer = nsq.writer({ port: 4150 });
+// Publish.
+const writer = nsq.writer();
 
 function next() {
-  setImmediate(function(){
-    writer.publish('events', ['foo', 'bar', 'baz'], next);
-  });
+  writer.publish('events', ['foo', 'bar', 'baz'], next);
+}
+
+function finish() {
+  process.stdout.write(`\rTotal messages sent: ${n} (${n / runtime} msg/ms)`);
+  process.exit(0);
 }
 
 next();
 
-setTimeout(function(){
-  process.exit(0);
-}, 10000);
+setTimeout(() => finish(), runtime);

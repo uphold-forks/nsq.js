@@ -1,10 +1,16 @@
+.PHONY: lint
+lint:
+	@npx eslint \
+		--fix \
+		index.js \
+		examples \
+		lib \
+		test
 
+.PHONY: test
 test:
-	@./node_modules/.bin/mocha \
-		--require should \
+	@npx mocha \
 		--bail \
 		--timeout 20s \
 		test/unit/*.js \
 		test/acceptance/*.js
-
-.PHONY: test

@@ -1,14 +1,14 @@
+'use strict';
 
 /**
  * Module dependencies.
  */
 
-var jstrace = require('jstrace');
-var nsq = require('..');
+const jstrace = require('jstrace');
+const nsq = require('..');
 
-// subscribe
-
-var reader = nsq.reader({
+// Subscribe.
+const reader = nsq.reader({
   nsqd: ['0.0.0.0:4150'],
   maxInFlight: 5,
   topic: 'events',
@@ -16,17 +16,12 @@ var reader = nsq.reader({
   trace: jstrace
 });
 
-reader.on('message', function(msg){
+reader.on('message', msg => {
   console.log(msg.id);
-  setTimeout(function(){
-    msg.finish();
-  }, 200);
+  setTimeout(() => msg.finish(), 200);
 });
 
-// publish
+// Publish.
+const writer = nsq.writer();
 
-var writer = nsq.writer({ host: '0.0.0.0', port: 4150 });
-
-setInterval(function(){
-  writer.publish('events', 'some message here');
-}, 150);
+setInterval(() => writer.publish('events', 'some message here'), 150);

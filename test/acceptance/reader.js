@@ -1,317 +1,315 @@
+'use strict';
 
-var utils = require('../utils');
-var assert = require('assert');
-var nsq = require('../..');
-var uid = require('uid');
+/**
+ * Module dependencies.
+ */
 
-describe('Reader', function(){
-  var topic = uid();
-  afterEach(function(done){
-    utils.deleteTopic(topic, function(){
-      topic = uid();
-      done();
-    })
-  })
+const assert = require('node:assert');
+const nsq = require('../..');
+const uid = require('uid');
+const utils = require('../utils');
 
-  describe('Reader()', function(){
-    describe('with .nsqd addresses', function(){
-      it('should subscribe to messages', function(done){
-        var pub = nsq.writer();
-        var sub = nsq.reader({
-          topic: topic,
-          channel: 'reader',
-          nsqd: ['0.0.0.0:4150']
-        });
+describe('Acceptance: Reader', () => {
+  let topic;
 
-        sub.on('message', function(msg){
-          msg.finish(done);
-        });
-
-        pub.on('ready', function(){
-          pub.publish(topic, 'something', function(err){
-            if (err) return done(err);
-          });
-        });
-      })
-
-      it('should connect after event handlers are added', function(done){
-        var sub = nsq.reader({
-          topic: topic,
-          channel: 'reader',
-          nsqd: ['0.0.0.0:4150']
-        });
-
-        sub.connect = function(){
-          sub.emit('done');
-        };
-
-        sub.on('done', done);
-      });
-    })
-
-    describe('with .nsqlookupd addresses', function(){
-      it('should subscribe to messages', function(done){
-        var pub = nsq.writer();
-        var sub = nsq.reader({
-          topic: topic,
-          channel: 'reader',
-          nsqlookupd: ['0.0.0.0:4161'],
-          pollInterval: 100
-        });
-        sub.on('message', function(msg){
-          msg.finish(done);
-        });
-
-        pub.on('ready', function(){
-          pub.publish(topic, 'something', function(err){
-            if (err) return done(err);
-          });
-        });
-      })
-
-      it('should set .timer attribute', function(done){
-        var sub = nsq.reader({
-          topic: topic,
-          channel: 'reader',
-          nsqlookupd: ['0.0.0.0:4161']
-        });
-
-        setImmediate(function(){
-          assert(sub.timer !== null);
-          done();
-        });
-      })
-    })
-
-    it('should discard messages after the max attempts', function(done){
-      var pub = nsq.writer();
-      var sub = nsq.reader({
-        topic: topic,
-        channel: 'reader',
-        nsqd: ['0.0.0.0:4150'],
-        maxAttempts: 5,
-      });
-
-      sub.once('discard', function(msg){
-        sub.removeAllListeners('message');
-        done();
-      });
-
-      sub.on('message', function(msg){
-        msg.requeue(0);
-      });
-
-      pub.on('ready', function(){
-        pub.publish(topic, 'something');
-      });
-    });
-
-    it('should re-receive the message after calling requeue', function(done){
-      var pub = nsq.writer();
-      var sub = nsq.reader({
-        topic: topic,
-        channel: 'reader',
-        nsqd: ['0.0.0.0:4150'],
-        maxAttempts: 5,
-      });
-
-      var attempts = 1;
-      sub.on('message', function(msg){
-        assert.equal(attempts, msg.attempts);
-
-        if (attempts === 1) {
-          msg.requeue(null, function(err) { assert(!err); });
-        } else {
-          msg.finish(done);
-        }
-
-        ++attempts;
-      });
-
-      pub.on('ready', function(){
-        pub.publish(topic, 'something');
-      });
-    });
+  afterEach(done => {
+    utils.deleteTopic(topic, () => done());
   });
 
-  describe('Reader#close()', function(){
-    var topic = uid();
-    beforeEach(function(done){
-      var oldTopic = topic;
-      var newTopic = uid();
-      topic = newTopic;
-      utils.deleteTopic(oldTopic, function(){
-        utils.createTopic(newTopic, done);
-      })
-    })
+  beforeEach(() => {
+    topic = uid();
+  });
 
-    it('should wait for pending messages and emit "close"', function(done){
-      var pub = nsq.writer();
-      var recv = 0;
+  describe('Reader', () => {
+    describe('constructor()', () => {
+      describe('with nsqd addresses', () => {
+        it('should subscribe to messages', done => {
+          const pub = nsq.writer();
+          const sub = nsq.reader({
+            topic,
+            channel: 'reader',
+            nsqd: ['127.0.0.1:4150']
+          });
 
-      var sub = nsq.reader({
-        topic: topic,
-        channel: 'reader',
-        nsqd: ['0.0.0.0:4150'],
-        maxInFlight: 10
+          sub.on('message', msg => msg.finish(done));
+          pub.on('ready', () => pub.publish(topic, 'something', done));
+        });
+
+        it('should connect after event handlers are added', done => {
+          const sub = nsq.reader({
+            topic,
+            channel: 'reader',
+            nsqd: ['127.0.0.1:4150']
+          });
+
+          sub.connect = () => sub.emit('done');
+
+          sub.on('done', done);
+        });
       });
 
-      var n = 0;
-      pub.on('ready', function(){
-        var count = 30;
-        while (count--) pub.publish(topic, { n: n++ });
+      describe('with nsqlookupd addresses', () => {
+        it('should subscribe to messages', done => {
+          const pub = nsq.writer();
+          const sub = nsq.reader({
+            topic,
+            channel: 'reader',
+            nsqlookupd: ['127.0.0.1:4161'],
+            pollInterval: 100
+          });
+
+          sub.on('message', msg => msg.finish(done));
+          pub.on('ready', () => pub.publish(topic, 'something', done));
+        });
+
+        it('should connect after event handlers are added', done => {
+          const sub = nsq.reader({
+            topic,
+            channel: 'reader',
+            nsqlookupd: ['127.0.0.1:4161']
+          });
+
+          sub.connect = () => sub.emit('done');
+
+          sub.on('done', done);
+        });
+
+        it('should set timer attribute for lookup polling', done => {
+          const sub = nsq.reader({
+            topic,
+            channel: 'reader',
+            nsqlookupd: ['127.0.0.1:4161']
+          });
+
+          setImmediate(() => {
+            assert.ok(sub.timer);
+            done();
+          });
+        });
       });
 
-      sub.on('close', function(){
-        assert(recv < 30, 'received too many messages');
-        done();
+      it('should discard messages after the max attempts', done => {
+        const pub = nsq.writer();
+        const sub = nsq.reader({
+          topic,
+          channel: 'reader',
+          nsqd: ['127.0.0.1:4150'],
+          maxAttempts: 2,
+        });
+
+        let attempts = 0;
+
+        sub.once('discard', () => {
+          sub.removeAllListeners('message');
+
+          assert.equal(attempts, 2);
+
+          done();
+        });
+
+        sub.on('message', msg => {
+          attempts++;
+          msg.requeue(0);
+        });
+        pub.on('ready', () => pub.publish(topic, 'something'));
       });
 
-      sub.on('message', function(msg){
-        setTimeout(function(){
-          if (recv++ == 10) sub.close();
+      it('should re-receive the message after calling requeue', done => {
+        const pub = nsq.writer();
+        const sub = nsq.reader({
+          topic,
+          channel: 'reader',
+          nsqd: ['127.0.0.1:4150'],
+          maxAttempts: 2,
+        });
+
+        let attempts = 1;
+
+        sub.on('message', msg => {
+          assert.equal(msg.attempts, attempts);
+
+          if (msg.attempts === 1) {
+            msg.requeue(0, err => assert.ifError(err));
+          } else {
+            msg.finish(done);
+          }
+
+          attempts++;
+        });
+        pub.on('ready', () => pub.publish(topic, 'something'));
+      });
+    });
+
+    describe('close()', () => {
+      beforeEach(done => {
+        utils.createTopic(topic, done);
+      });
+
+      it('should wait for in-flight messages and emit "close"', done => {
+        const pub = nsq.writer();
+        const sub = nsq.reader({
+          topic,
+          channel: 'reader',
+          nsqd: ['127.0.0.1:4150'],
+          maxInFlight: 10
+        });
+
+        let recv = 0;
+        let sent = 0;
+
+        pub.on('ready', () => {
+          for (let count = 30; count > 0; count--) {
+            pub.publish(topic, { n: sent++ });
+          }
+        });
+        sub.on('close', () => {
+          assert.equal(sent, 30);
+          assert.ok(recv <= 20, 'received too many messages');
+          done();
+        });
+        sub.on('message', msg => {
+          if (recv++ === 10) {
+            sub.close();
+          }
+
           msg.finish();
-        }, 50);
-      });
-    })
-  })
-
-  describe('Reader#close(fn)', function(){
-    it('should wait for pending messages and invoke the callback', function(done){
-      var pub = nsq.writer();
-      var recv = 0;
-
-      var sub = nsq.reader({
-        topic: topic,
-        channel: 'reader',
-        nsqd: ['0.0.0.0:4150'],
-        maxInFlight: 10
+        });
       });
 
-      var n = 0;
-      pub.on('ready', function(){
-        var count = 30;
-        while (count--) pub.publish(topic, { n: n++ });
-      });
+      it('should wait for pending messages and invoke the callback', done => {
+        const pub = nsq.writer();
+        const sub = nsq.reader({
+          topic,
+          channel: 'reader',
+          nsqd: ['127.0.0.1:4150'],
+          maxInFlight: 10
+        });
 
-      sub.on('message', function(msg){
-        setTimeout(function(){
+        let recv = 0;
+        let sent = 0;
+
+        pub.on('ready', () => {
+          for (let count = 30; count > 0; count--) {
+            pub.publish(topic, { n: sent++ });
+          }
+        });
+        sub.on('message', msg => {
           if (recv++ == 10) {
-            sub.close(function(){
-              assert(recv < 30, 'received too many messages');
+            sub.close(() => {
+              assert.equal(sent, 30);
+              assert.ok(recv <= 20, 'received too many messages');
+
               done();
             });
           }
+
           msg.finish();
-        }, 50);
-      });
-    })
-
-    it('should close if there are no in-flight messages', function(done){
-      var pub = nsq.writer();
-      var sub = nsq.reader({
-        topic: topic,
-        channel: 'reader',
-        nsqd: ['0.0.0.0:4150'],
-        maxInFlight: 10
+        });
       });
 
-      sub.on('ready', function(){
-        // give it some time to SUB... lame
-        // add subscribe event?
-        setTimeout(function(){
-          sub.close(done);
-        }, 100);
-      });
-    })
-  })
-
-  describe('Reader#close(fn)', function(){
-    it('should stop polling nsqlookupd if reader had been closed', function(done){
-      var sub = nsq.reader({
-        topic: topic,
-        channel: 'reader',
-        nsqlookupd: ['0.0.0.0:4161'],
-        pollInterval: 100
-      });
-
-      setImmediate(function(){
-        sub.close();
-        sub.lookup = function(fn){
-          done(new Error('setInterval() is still running'));
-        };
-      });
-
-      setTimeout(done, 500);
-    })
-  })
-
-  describe('Reader#end(fn)', function(){
-    it('should end if there are no connections', function(done){
-      var sub = nsq.reader({
-        topic: topic,
-        channel: 'reader',
-        nsqd: [],
-      });
-
-      sub.end(done);
-    })
-
-    it('should end all connections', function(done){
-      var sub = nsq.reader({
-        topic: topic,
-        channel: 'reader',
-        nsqd: ['0.0.0.0:4150'],
-      });
-
-      sub.on('ready', function(){
-        setTimeout(function(){
-          sub.end(done);
-        }, 100);
-      });
-    })
-
-    it('should end all connections even if there are in-flight messages', function(done){
-      var pub = nsq.writer();
-
-      var sub = nsq.reader({
-        topic: topic,
-        channel: 'reader',
-        nsqd: ['0.0.0.0:4150'],
-        maxInFlight: 10
-      });
-
-      pub.on('ready', function(){
-        pub.publish(topic, {});
-      });
-
-      sub.on('message', function(msg){
-        var pending = 0;
-        sub.conns.each(function(conn){
-          pending += conn.inFlight;
+      it('should close if there are no in-flight messages', done => {
+        const sub = nsq.reader({
+          topic,
+          channel: 'reader',
+          nsqd: ['127.0.0.1:4150'],
+          maxInFlight: 10
         });
 
-        assert(pending === 1);
+        sub.on('subscribed', () => sub.close(done));
+      });
+
+      it('should stop polling nsqlookupd if reader had been closed', done => {
+        const sub = nsq.reader({
+          topic,
+          channel: 'reader',
+          nsqlookupd: ['127.0.0.1:4161'],
+          pollInterval: 10
+        });
+
+        setImmediate(() => {
+          sub.close();
+          sub.lookup = () => {
+            done(new Error('setInterval() is still running'));
+          };
+        });
+
+        setTimeout(done, 100);
+      });
+    });
+
+    describe('end()', () => {
+      it('should end if there are no connections', done => {
+        const sub = nsq.reader({
+          topic,
+          channel: 'reader',
+          nsqd: [],
+        });
+
         sub.end(done);
       });
-    })
 
-    it('should stop polling nsqlookupd if reader had been closed', function(done){
-      var sub = nsq.reader({
-        topic: topic,
-        channel: 'reader',
-        nsqlookupd: ['0.0.0.0:4161'],
-        pollInterval: 100
+      it('should end all connections', done => {
+        const sub = nsq.reader({
+          topic,
+          channel: 'reader',
+          nsqd: ['127.0.0.1:4150']
+        });
+
+        sub.on('subscribed', () => {
+          sub.end(() => {
+            sub.conns.forEach(conn => assert.equal(conn.closed, true));
+
+            done();
+          });
+        });
       });
 
-      setImmediate(function(){
-        sub.end();
-        sub.lookup = function(fn){
-          done(new Error('setInterval() is still running'));
-        };
+      it('should end all connections even if there are in-flight messages', done => {
+        const pub = nsq.writer();
+
+        const sub = nsq.reader({
+          topic,
+          channel: 'reader',
+          nsqd: ['127.0.0.1:4150'],
+          maxInFlight: 10
+        });
+
+        pub.on('ready', () => {
+          pub.publish(topic, {});
+        });
+
+        sub.on('message', () => {
+          sub.end(() => {
+            let pending = 0;
+
+            sub.conns.forEach(conn => {
+              pending += conn.inFlight;
+            });
+
+            assert.equal(pending, 1);
+
+            done();
+          });
+        });
       });
 
-      setTimeout(done, 500);
-    })
-  })
+      it('should stop polling nsqlookupd if reader had been ended', done => {
+        const sub = nsq.reader({
+          topic,
+          channel: 'reader',
+          nsqlookupd: ['127.0.0.1:4161'],
+          pollInterval: 10
+        });
+
+        setImmediate(() => {
+          sub.close();
+          sub.lookup = () => {
+            done(new Error('setInterval() is still running'));
+          };
+        });
+
+        setTimeout(done, 100);
+      });
+    });
+  });
 });

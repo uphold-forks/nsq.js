@@ -1,148 +1,153 @@
+'use strict';
 
-var Connection = require('../../lib/connection');
-var assert = require('assert');
-var nsq = require('../..');
-var sinon = require('sinon');
-var uid = require('uid');
-var utils = require('../utils');
+/**
+ * Module dependencies.
+ */
 
-describe('Writer#publish()', function(){
-  var topic = uid();
-  afterEach(function(done){
-    utils.deleteTopic(topic, function(){
-      topic = uid();
-      done();
-    });
-  })
+const Connection = require('../../lib/connection');
+const assert = require('node:assert');
+const nsq = require('../..');
+const sinon = require('sinon');
+const uid = require('uid');
+const utils = require('../utils');
 
-  it('should publish messages', function(done){
-    var pub = nsq.writer();
-    var sub = new Connection;
+describe('Acceptance: Writer', () => {
+  let topic;
 
-    pub.publish(topic, 'something');
-    sub.on('ready', function(){
-      sub.subscribe(topic, 'tailer');
-      sub.ready(5);
-    });
+  afterEach(done => {
+    utils.deleteTopic(topic, () => done());
+  });
 
-    sub.on('message', function(msg){
-      msg.finish();
-      done();
-    });
+  beforeEach(() => {
+    topic = uid();
+  });
 
-    sub.connect();
-  })
 
-  it('should emit "error"', function(done){
-    var pub = nsq.writer({ port: 5000 });
+  describe('Writer', () => {
+    describe('publish()', () => {
+      it('should publish messages', done => {
+        const pub = nsq.writer();
+        const sub = new Connection();
 
-    pub.once('error', function(err){
-      err.code.should.equal('ECONNREFUSED');
-      err.address.should.equal('0.0.0.0:5000');
-      done();
-    });
+        pub.publish(topic, 'something');
 
-    // hack to prevent multiple done()s since
-    // we perform reconnection attempts
-    pub.on('error', function(){});
-  })
+        sub.on('ready', () => {
+          sub.subscribe(topic, 'tailer');
+          sub.ready(5);
+        });
 
-  it('should close with an optional callback', function(done){
-    var pub = nsq.writer();
-    var sub = new Connection;
-    var n = 0;
-
-    function next(err){
-      if (err) return done(err);
-      n = n + 1;
-    }
-
-    pub.on('ready', function(){
-      pub.publish(topic, new Buffer(1024), next);
-      pub.publish(topic, new Buffer(1024), next);
-      pub.publish(topic, new Buffer(1024), next);
-      pub.close(function(){
-        assert(n === 3);
-        done();
-      });
-    });
-
-    sub.on('ready', function(){
-      sub.subscribe(topic, 'tailer');
-    });
-
-    sub.on('message', function(msg){
-      msg.finish();
-    });
-
-    sub.connect();
-  })
-
-  it('should call close callback and destroy pending connections when there are no ready connections', function (done) {
-    sinon.spy(Connection.prototype, 'destroy');
-    sinon.spy(Connection.prototype, 'close');
-
-    var pub = nsq.writer();
-
-    pub.close(function() {
-      Connection.prototype.destroy.called.should.be.true();
-      Connection.prototype.close.called.should.be.false();
-
-      done();
-    });
-  })
-
-  describe('with an array', function(){
-    it('should MPUT', function(done){
-      var pub = nsq.writer();
-      var sub = new Connection;
-      var msgs = [];
-      var n = 0;
-
-      pub.on('ready', function(){
-        pub.publish(topic, ['foo', 'bar', 'baz']);
-      });
-
-      sub.on('ready', function(){
-        sub.subscribe(topic, 'something');
-        sub.ready(5);
-      });
-
-      sub.on('message', function(msg){
-        msgs.push(msg.body.toString());
-        msg.finish();
-
-        if (++n == 3) {
-          msgs.should.eql(['foo', 'bar', 'baz']);
+        sub.on('message', msg => {
+          msg.finish();
           done();
+        });
+
+        sub.connect();
+      });
+
+      it('should emit "error"', done => {
+        const pub = nsq.writer({ maxConnectionAttempts: 0, nsqd: ['0.0.0.0:5000'] });
+
+        pub.on('error', err => {
+          assert.equal(err.code, 'ECONNREFUSED');
+          assert.equal(err.address, '0.0.0.0:5000');
+          done();
+        });
+      });
+
+      it('should close with an optional callback', done => {
+        const pub = nsq.writer();
+        const sub = new Connection();
+        let n = 0;
+
+        function next(err) {
+          if (err) {
+            return done(err);
+          }
+
+          n++;
         }
+
+        pub.on('ready', () => {
+          pub.publish(topic, new Buffer.alloc(1024), next);
+          pub.publish(topic, new Buffer.alloc(1024), next);
+          pub.publish(topic, new Buffer.alloc(1024), next);
+          pub.close(() => {
+            assert(n === 3);
+            done();
+          });
+        });
+
+        sub.on('ready', () => sub.subscribe(topic, 'tailer'));
+
+        sub.on('message', msg => msg.finish());
+
+        sub.connect();
       });
 
-      sub.connect();
-    })
-  })
+      it('should call close callback and destroy pending connections when there are no ready connections', done => {
+        sinon.spy(Connection.prototype, 'destroy');
+        sinon.spy(Connection.prototype, 'close');
 
-  describe('with a buffer', function(){
-    it('should not stringify', function(done){
-      var pub = nsq.writer();
-      var sub = new Connection;
+        const pub = nsq.writer();
 
-      pub.on('ready', function(){
-        pub.publish(topic, Buffer('foobar'));
+        pub.close(() => {
+          assert.equal(Connection.prototype.destroy.called, true);
+          assert.equal(Connection.prototype.close.called, false);
+
+          done();
+        });
       });
 
-      sub.on('ready', function(){
-        sub.subscribe(topic, 'something');
-        sub.ready(5);
+      describe('with an array', () => {
+        it('should MPUT', done => {
+          const pub = nsq.writer();
+          const sub = new Connection();
+          const msgs = [];
+
+          let n = 0;
+
+          pub.on('ready', () => pub.publish(topic, ['foo', 'bar', 'baz']));
+
+          sub.on('ready', () => {
+            sub.subscribe(topic, 'something');
+            sub.ready(5);
+          });
+
+          sub.on('message', msg => {
+            msgs.push(msg.body.toString());
+            msg.finish();
+
+            if (++n === 3) {
+              assert.deepEqual(msgs, ['foo', 'bar', 'baz']);
+              done();
+            }
+          });
+
+          sub.connect();
+        });
       });
 
-      sub.on('message', function(msg){
-        msg.finish();
-        msg.body.toString().should.eql('foobar');
-        done();
-      });
+      describe('with a buffer', () => {
+        it('should not stringify', done => {
+          const pub = nsq.writer();
+          const sub = new Connection();
 
-      sub.connect();
-    })
-  })
-})
+          pub.on('ready', () => pub.publish(topic, Buffer.from('foobar')));
+
+          sub.on('ready', () => {
+            sub.subscribe(topic, 'something');
+            sub.ready(5);
+          });
+
+          sub.on('message', msg => {
+            msg.finish();
+            assert.equal(msg.body.toString(), 'foobar');
+            done();
+          });
+
+          sub.connect();
+        });
+      });
+    });
+  });
+});
