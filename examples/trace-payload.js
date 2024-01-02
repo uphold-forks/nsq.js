@@ -1,11 +1,17 @@
+'use strict';
 
 // $ node examples/simple
 // $ jstrace examples/trace-payload
 
-exports.remote = function(traces){
-  traces.on('connection:message', function(trace){
-    var body = trace.msg.body;
-    traces.emit('message size', body.length);
+/**
+ * Module dependencies.
+ */
+
+const bytes = require('bytes');
+
+module.exports.remote = traces => {
+  traces.on('connection:message', trace => {
+    traces.emit('message size', trace.msg.id, trace.msg.body.length);
   });
 };
 
@@ -14,10 +20,8 @@ exports.remote = function(traces){
 // data ( the message size ) instead and report
 // on it locally.
 
-exports.local = function(traces){
-  var bytes = require('bytes');
-
-  traces.on('message size', function(len){
-    console.log('length %s', bytes(len));
+module.exports.local = traces => {
+  traces.on('message size', (id, len) => {
+    console.log('%s length %s', id, bytes(len));
   });
 };

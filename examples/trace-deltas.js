@@ -1,19 +1,22 @@
+'use strict';
 
 // $ node examples/simple
 // $ jstrace examples/trace-deltas
 
-exports.remote = function(traces){
-  var d = {};
+module.exports.remote = traces => {
+  const d = {};
 
-  traces.on('connection:message', function(trace){
+  traces.on('connection:message', trace => {
     d[trace.msg.id] = trace.timestamp;
   });
 
-  traces.on('message:finish', function(trace){
-    var start = d[trace.msg.id];
-    if (!start) return;
+  traces.on('message:finish', trace => {
+    const start = d[trace.msg.id];
 
-    var delta = trace.timestamp - start;
-    console.log('%s took %sms', trace.msg.id, delta);
+    if (!start) {
+      return;
+    }
+
+    console.log('%s took %sms', trace.msg.id, trace.timestamp - start);
   });
-}
+};

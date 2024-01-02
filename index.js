@@ -1,31 +1,28 @@
+'use strict';
 
 /**
  * Module dependencies.
  */
 
-var Reader = require('./lib/reader');
-var Writer = require('./lib/writer');
+const Reader = require('./lib/reader');
+const Writer = require('./lib/writer');
 
 /**
  * Create a new reader.
  *
- * @param {Object} opts
+ * @param {Object} options
  * @return {Writer}
  * @api public
  */
 
-exports.reader = function(opts){
-  return new Reader(opts);
-};
+module.exports.reader = options => new Reader(options);
 
 /**
  * Create a new writer.
  *
- * @param {Object} opts
+ * @param {Object} options
  * @return {Writer}
  * @api public
  */
 
-exports.writer = function(opts){
-  return new Writer(opts);
-};
+module.exports.writer = options => new Writer(options);

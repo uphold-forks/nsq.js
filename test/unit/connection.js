@@ -1,173 +1,177 @@
+'use strict';
 
-var Connection = require('../../lib/connection');
-var assert = require('assert');
-var framerData = require('../utils').framerData;
+/**
+ * Module dependencies.
+ */
 
-describe('Connection(opts)', function(){
-  it('should default maxAttempts to Infinity', function(){
-    var conn = new Connection;
-    assert(conn.maxAttempts == Infinity);
-  })
+const { framerData } = require('../utils');
+const Connection = require('../../lib/connection');
+const assert = require('node:assert');
 
-  it('should default maxInFlight to 1', function(){
-    var conn = new Connection;
-    assert(conn.maxInFlight == 1);
-  })
+describe('Connection', () => {
+  describe('constructor()', () => {
+    it('should default maxAttempts to Infinity', () => {
+      const conn = new Connection();
 
-  it('should populate .addr', function(){
-    var conn = new Connection({ host: '0.0.0.0', port: 1234 });
-    assert(conn.addr == '0.0.0.0:1234');
-  })
-})
-
-describe('Connection#command(name)', function(){
-  it('should write command', function(){
-    var conn = new Connection;
-    var writes = [];
-
-    conn.sock = {
-      write: function(chunks){
-        writes = writes.concat(chunks);
-      }
-    };
-
-    conn.command('NOP');
-    writes.toString().should.eql('NOP\n');
-  })
-})
-
-describe('Connection#command(name, args)', function(){
-  it('should write command and args', function(){
-    var conn = new Connection;
-    var writes = [];
-
-    conn.sock = {
-      write: function(chunks){
-         writes = writes.concat(chunks);
-      }
-    };
-
-    conn.command('RDY', [5]);
-    writes.toString().should.eql('RDY 5\n');
-  })
-
-  it('should join multiple args', function(){
-    var conn = new Connection;
-    var writes = [];
-
-    conn.sock = {
-      write: function(chunks){
-         writes = writes.concat(chunks);
-      }
-    };
-
-    conn.command('REQ', ['12345', 5000]);
-    writes.toString().should.eql('REQ 12345 5000\n');
-  })
-})
-
-describe('Connection#connect(fn)', function(){
-  it('should emit message if maxAttempts and attempts is 1', function(done){
-    var conn = new Connection({ maxAttempts: 1 });
-
-    conn.on('ready', function(){
-      // ignore 'invalid state' error because no callbacks
-      conn.on('error', function(){});
-
-      conn.on('discard', function(){
-        throw new Error('discard should not be called');
-      });
-
-      conn.on('message', function(msg){
-        msg.attempts.should.eql(1);
-        done();
-      });
-
-      framerData.forEach(function(data){
-        conn.framer.write(new Buffer(data, 'hex'));
-      });
+      assert.equal(conn.maxAttempts, Infinity);
     });
 
-    conn.connect();
-  })
-})
+    it('should default maxInFlight to 1', () => {
+      const conn = new Connection();
 
-describe('Connection#command(name, args, data)', function(){
-  it('should call callbacks with error when connection is closed', function (done) {
-    var conn = new Connection;
+      assert.equal(conn.maxInFlight, 1);
+    });
 
-    conn.on('ready', function(){
-      conn.sock.write = function () {
-        // trigger a socket 'close' event
-        conn.sock.end();
+    it('should populate `addr`', () => {
+      const conn = new Connection({ host: '0.0.0.0', port: 1234 });
+
+      assert.equal(conn.addr, '0.0.0.0:1234');
+    });
+  });
+
+  describe('command()', () => {
+    it('should write command', () => {
+      const conn = new Connection();
+      const writes = [];
+
+      conn.sock = {
+        write: chunks => {
+          writes.push(chunks);
+        }
       };
 
-      conn.command('PUB', ['events'], new Buffer('foo bar'), function() {
-        conn.callbacks.should.eql([]);
-        done();
-      });
+      conn.command('NOP');
+
+      assert.equal(writes.toString(), 'NOP \n');
     });
 
-    conn.connect();
-  })
+    it('should write command and args', () => {
+      const conn = new Connection();
+      const writes = [];
 
-  it('should write command, args and data', function(){
-    var conn = new Connection;
-    var writes = [];
+      conn.sock = { write: chunks => writes.push(chunks) };
 
-    conn.sock = {
-      write: function(chunks){
-         writes = writes.concat(chunks);
-      }
-    };
+      conn.command('RDY', [5]);
 
-    conn.command('PUB', ['events'], new Buffer('foo bar'));
-    writes.toString().should.eql('PUB events\n\u0000\u0000\u0000\u0007foo bar');
-  })
-})
+      assert.equal(writes.toString(), 'RDY 5\n');
+    });
 
-describe('Connection#subscribe(topic, channel, fn)', function(){
-  it('should SUB', function(done){
-    var conn = new Connection;
-    conn._ready = true;
+    it('should write command, args and data', () => {
+      const conn = new Connection();
+      const writes = [];
 
-    conn.command = function(cmd, args, fn){
-      assert('SUB' == cmd);
-      args.should.eql(['events', 'ingestion']);
-      fn();
-    };
+      conn.sock = { write: chunks => writes.push(chunks) };
 
-    conn.subscribe('events', 'ingestion', done);
-  })
-})
+      conn.command('PUB', ['events'], Buffer.from('foo bar'));
 
-describe('Connection#publish(topic, data, fn)', function(){
-  it('should PUB', function(done){
-    var conn = new Connection;
-    conn._ready = true;
+      assert.equal(writes.toString(), 'PUB events\n\u0000\u0000\u0000\u0007foo bar');
+    });
 
-    conn.command = function(cmd, args, data, fn){
-      assert('PUB' == cmd);
-      args.should.eql(['events']);
-      data.should.equal('foo bar baz');
-      fn();
-    };
+    it('should join multiple args', () => {
+      const conn = new Connection();
+      const writes = [];
 
-    conn.publish('events', 'foo bar baz', done);
-  })
-})
+      conn.sock = { write: chunks => writes.push(chunks) };
 
-describe('Connection#ready(n)', function(){
-  it('should RDY', function(done){
-    var conn = new Connection;
+      conn.command('REQ', ['12345', 5000]);
 
-    conn.command = function(cmd, args){
-      assert('RDY' == cmd);
-      args.should.eql([15]);
-      done();
-    };
+      assert.equal(writes.toString(), 'REQ 12345 5000\n');
+    });
 
-    conn.ready(15);
-    assert(conn.lastReady = 15);
-  })
-})
+    it('should call callbacks with error when connection is closed', done => {
+      const conn = new Connection();
+
+      conn.on('ready', () => {
+        conn.sock.write = () => {
+          // trigger a socket 'close' event.
+          conn.sock.end();
+        };
+
+        conn.command('PUB', ['events'], Buffer.from('foo bar'), err => {
+          assert.equal(err.message, 'socket closed without releasing callbacks');
+          assert.equal(conn.callbacks.length, 0);
+
+          done();
+        });
+      });
+
+      conn.connect();
+    });
+  });
+
+  describe('connect()', () => {
+    it('should emit message if maxAttempts and attempts is 1', (done) => {
+      const conn = new Connection({ maxAttempts: 1 });
+
+      conn.on('ready', () => {
+        // ignore 'invalid state' error due to not having callbacks.
+        conn.on('error', function() {});
+
+        conn.on('discard', () => {
+          throw new Error('discard should not be called');
+        });
+
+        conn.on('message', msg => {
+          assert.equal(msg.attempts, 1);
+          done();
+        });
+
+        framerData.forEach(data => conn.framer.write(Buffer.from(data, 'hex')));
+      });
+
+      conn.connect();
+    });
+  });
+
+  describe('subscribe()', () => {
+    it('should call `Connection.command()`', done => {
+      const conn = new Connection();
+
+      conn._ready = true;
+
+      conn.command = (cmd, args, fn) => {
+        assert.equal(cmd, 'SUB');
+        assert.deepEqual(args, ['events', 'ingestion']);
+
+        fn();
+      };
+
+      conn.subscribe('events', 'ingestion', done);
+    });
+  });
+
+  describe('publish()', () => {
+    it('should call `Connection.command()`', done => {
+      const conn = new Connection();
+
+      conn._ready = true;
+
+      conn.command = (cmd, args, data, fn) => {
+        assert.equal(cmd, 'PUB');
+        assert.deepEqual(args, ['events']);
+        assert.equal(data, 'foo bar baz');
+
+        fn();
+      };
+
+      conn.publish('events', 'foo bar baz', done);
+    });
+  });
+
+  describe('ready()', () => {
+    it('should call `Connection.command()`', done => {
+      const conn = new Connection();
+
+      conn.command = (cmd, args) => {
+        assert.equal(cmd, 'RDY');
+        assert.equal(args[0], 15);
+
+        done();
+      };
+
+      conn.ready(15);
+
+      assert.equal(conn.lastReady, 15);
+    });
+  });
+});

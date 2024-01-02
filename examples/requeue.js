@@ -1,13 +1,13 @@
+'use strict';
 
 /**
  * Module dependencies.
  */
 
-var nsq = require('..');
+const nsq = require('..');
 
-// subscribe
-
-var reader = nsq.reader({
+// Subscribe.
+const reader = nsq.reader({
   nsqd: ['0.0.0.0:4150'],
   maxInFlight: 1,
   maxAttempts: 5,
@@ -15,25 +15,24 @@ var reader = nsq.reader({
   channel: 'ingestion'
 });
 
-reader.on('error', function(err){
+reader.on('error', err => {
   console.log(err.stack);
 });
 
-reader.on('message', function(msg){
-  var body = msg.body.toString();
+reader.on('message', msg => {
+  const body = msg.body.toString();
   console.log('%s attempts=%s', body, msg.attempts);
-  msg.requeue(2000);
+  msg.requeue(200);
 });
 
-reader.on('discard', function(msg){
-  var body = msg.body.toString();
+reader.on('discard', msg => {
+  const body = msg.body.toString();
   console.log('giving up on %s', body);
   msg.finish();
 });
 
-// publish
-
-var writer = nsq.writer({ port: 4150 });
+// Publish.
+const writer = nsq.writer();
 
 writer.publish('events', 'foo');
 writer.publish('events', 'bar');

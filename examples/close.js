@@ -1,42 +1,45 @@
+'use strict';
 
 /**
  * Module dependencies.
  */
 
- var nsq = require('..');
+const nsq = require('..');
 
-// subscribe
-
-var sub = nsq.reader({
+// Subscribe.
+const sub = nsq.reader({
   nsqd: ['0.0.0.0:4150'],
-  maxInFlight: 25,
+  maxInFlight: 10,
   topic: 'events',
   channel: 'ingestion'
 });
 
-sub.on('message', function(msg){
-  setTimeout(function(){
-    console.log('... fin %s', msg.id);
+sub.on('message', msg => {
+  setTimeout(() => {
+    console.log('... fin %s', msg.body);
     msg.finish();
-  }, 1000);
+  }, 10);
 });
 
-sub.on('close', function(){
+sub.on('close', () => {
   pub.close();
   console.log('... closed');
 });
 
-// publish
+// Publish.
+const pub = nsq.writer();
 
-var pub = nsq.writer({ host: '0.0.0.0', port: 4150 });
-
-setTimeout(function(){
+setTimeout(() => {
   console.log('... sending events');
-  var n = 100;
-  while (n--) pub.publish('events', 'some message here');
-}, 1000);
 
-setTimeout(function(){
+  let n = 10;
+
+  while (n--) {
+    pub.publish('events', `${10 - n}`);
+  }
+}, 10);
+
+setTimeout(() => {
   console.log('... closing');
   sub.close();
-}, 1500);
+}, 20);

@@ -1,38 +1,35 @@
+'use strict';
 
 /**
  * Module dependencies.
  */
 
-var nsq = require('..');
+const nsq = require('..');
 
-// subscribe
-
-var sub = nsq.reader({
+// Subscribe.
+const sub = nsq.reader({
   nsqd: ['0.0.0.0:4150'],
   maxInFlight: 5,
   topic: 'events',
   channel: 'ingestion'
 });
 
-sub.on('message', function(msg){
+sub.on('message', msg => {
   console.log('recv %s', msg.id);
   msg.finish();
 });
 
-// publish
+// Publish.
+const pub = nsq.writer();
 
-var pub = nsq.writer({ host: '0.0.0.0', port: 4150 });
+setInterval(() => pub.publish('events', 'some message here'), 30);
 
-setInterval(function(){
-  pub.publish('events', 'some message here');
-}, 30);
-
-setTimeout(function(){
+setTimeout(() => {
   console.log('pausing');
   sub.pause();
 }, 1500);
 
-setTimeout(function(){
+setTimeout(() => {
   console.log('resuming');
   sub.resume();
 }, 10000);

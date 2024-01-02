@@ -1,102 +1,113 @@
+'use strict';
 
-var Connection = require('../../lib/connection');
-var assert = require('assert');
-var utils = require('../utils');
-var uid = require('uid');
+/**
+ * Module dependencies.
+ */
 
-describe('Connection', function(){
-  var topic = uid();
-  afterEach(function(done){
-    utils.deleteTopic(topic, function(){
-      topic = uid();
-      done();
-    });
-  })
+const Connection = require('../../lib/connection');
+const assert = require('node:assert');
+const uid = require('uid');
+const utils = require('../utils');
 
-  it('should identify on connect', function(done){
-    var conn = new Connection;
+describe('Acceptance: Connection', () => {
+  let topic;
 
-    conn.connect();
+  afterEach(done => {
+    utils.deleteTopic(topic, () => done());
+  });
 
-    conn.on('ready', function(){
+  beforeEach(() => {
+    topic = uid();
+  });
+
+  it('should identify on connect', done => {
+    const conn = new Connection();
+
+    conn.on('ready', () => {
       assert('version' in conn.features);
       assert('max_rdy_count' in conn.features);
       assert('msg_timeout' in conn.features);
       done();
     });
-  })
 
-  it('should emit messages', function(done){
-    var pub = new Connection;
-    var sub = new Connection;
+    conn.connect();
+  });
 
-    pub.on('ready', function(){
-      pub.publish(topic, 'something');
-    });
+  it('should emit and receive messages', done => {
+    const pub = new Connection();
+    const sub = new Connection();
 
-    sub.on('ready', function(){
+    pub.on('ready', () => pub.publish(topic, 'something'));
+
+    sub.on('ready', () => {
       sub.subscribe(topic, 'tailer');
       sub.ready(5);
     });
 
-    sub.on('message', function(msg){
+    sub.on('message', (msg) => {
       msg.finish();
       done();
     });
 
     pub.connect();
     sub.connect();
-  })
+  });
 
-  it('should close cleanly', function(done){
-    var conn = new Connection;
+  it('should close cleanly', done => {
+    const conn = new Connection();
 
-    conn.on('ready', function(){
-      conn.subscribe(topic, 'tailer', function(err){
-        assert(!err);
+    conn.on('ready', () => {
+      conn.subscribe(topic, 'tailer', err => {
+        assert.ifError(err);
         conn.close(done);
       });
     });
 
     conn.connect();
-  })
+  });
 
-  it('should only call callbacks a single time', function(done){
-    var conn = new Connection;
-    var called = 0;
+  it('should only call callbacks a single time', done => {
+    const conn = new Connection();
 
-    conn.on('error', function(){});
-    conn.on('ready', function(){
+    let called = 0;
+
+    conn.on('error', () => {});
+    conn.on('ready', () => {
       conn.sock.destroy();
-      conn.publish(topic, 'something', function(err){
-        called++;
-      });
-      assert.equal(called, 1);
-      done();
+
+      setTimeout(() => {
+        conn.publish(topic, 'something', () => called++);
+        assert.equal(called, 1);
+        done();
+      }, 0);
     });
 
     conn.connect();
-  })
+  });
 
-  it('should not emit socket errors after destroy', function(done){
-    var conn = new Connection;
+  it('should not emit socket errors after destroy', done => {
+    const conn = new Connection();
+
     conn.on('error', done);
-    conn.on('ready', function(){
+    conn.on('ready', () => {
       conn.destroy();
-      conn.sock.emit('error', new Error);
+      conn.sock.emit('error', new Error());
       done();
     });
-    conn.connect();
-  })
 
-  it('should not write after socket.end()', function(done){
-    var conn = new Connection;
     conn.connect();
-    conn.on('ready', function(){
+  });
+
+  it('should not write after socket.end()', done => {
+    const conn = new Connection();
+
+    conn.on('ready', () => {
       conn.end();
       conn.publish(topic, 'stuff');
       conn.on('error', done);
       conn.on('end', done);
     });
+
+    conn.connect();
   });
-})
+});
