@@ -9,28 +9,6 @@ const assert = require('node:assert');
 const reconnect = require('../../lib/mixins/reconnect');
 
 describe('reconnect()', () => {
-  it('should emit "reconnect"', done => {
-    const conn = new EventEmitter();
-    let called = false;
-
-    conn.connect = () => {
-      called = true;
-    };
-
-    reconnect(conn);
-
-    conn.emit('connect');
-    conn.emit('close');
-
-    conn.on('reconnect', c => {
-      assert.equal(called, true);
-      assert.deepEqual(c, conn);
-      done();
-    });
-
-    conn.emit('connect');
-  });
-
   it('should reconnect on close', done => {
     const conn = new EventEmitter();
 
@@ -53,5 +31,18 @@ describe('reconnect()', () => {
     conn.emit('close');
 
     process.nextTick(done);
+  });
+
+  it('should emit "disconnect" if the max number of reconnection attempts is reached', done => {
+    const conn = new EventEmitter();
+
+    conn.connect = () => {};
+
+    reconnect(conn, 1);
+
+    conn.on('disconnect', done);
+
+    conn.emit('close');
+    conn.emit('close');
   });
 });

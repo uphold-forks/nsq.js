@@ -5,7 +5,9 @@
  */
 
 const assert = require('node:assert');
-const nsq = require('../..');
+const Reader = require('../../lib/reader');
+const Writer = require('../../lib/writer');
+const sinon = require('sinon');
 const uid = require('uid');
 const utils = require('../utils');
 
@@ -24,8 +26,8 @@ describe('Acceptance: Reader', () => {
     describe('constructor()', () => {
       describe('with nsqd addresses', () => {
         it('should subscribe to messages', done => {
-          const pub = nsq.writer();
-          const sub = nsq.reader({
+          const pub = new Writer();
+          const sub = new Reader({
             topic,
             channel: 'reader',
             nsqd: ['127.0.0.1:4150']
@@ -36,7 +38,7 @@ describe('Acceptance: Reader', () => {
         });
 
         it('should connect after event handlers are added', done => {
-          const sub = nsq.reader({
+          const sub = new Reader({
             topic,
             channel: 'reader',
             nsqd: ['127.0.0.1:4150']
@@ -50,8 +52,8 @@ describe('Acceptance: Reader', () => {
 
       describe('with nsqlookupd addresses', () => {
         it('should subscribe to messages', done => {
-          const pub = nsq.writer();
-          const sub = nsq.reader({
+          const pub = new Writer();
+          const sub = new Reader({
             topic,
             channel: 'reader',
             nsqlookupd: ['127.0.0.1:4161'],
@@ -63,7 +65,7 @@ describe('Acceptance: Reader', () => {
         });
 
         it('should connect after event handlers are added', done => {
-          const sub = nsq.reader({
+          const sub = new Reader({
             topic,
             channel: 'reader',
             nsqlookupd: ['127.0.0.1:4161']
@@ -75,7 +77,7 @@ describe('Acceptance: Reader', () => {
         });
 
         it('should set timer attribute for lookup polling', done => {
-          const sub = nsq.reader({
+          const sub = new Reader({
             topic,
             channel: 'reader',
             nsqlookupd: ['127.0.0.1:4161']
@@ -89,8 +91,8 @@ describe('Acceptance: Reader', () => {
       });
 
       it('should discard messages after the max attempts', done => {
-        const pub = nsq.writer();
-        const sub = nsq.reader({
+        const pub = new Writer();
+        const sub = new Reader({
           topic,
           channel: 'reader',
           nsqd: ['127.0.0.1:4150'],
@@ -115,8 +117,8 @@ describe('Acceptance: Reader', () => {
       });
 
       it('should re-receive the message after calling requeue', done => {
-        const pub = nsq.writer();
-        const sub = nsq.reader({
+        const pub = new Writer();
+        const sub = new Reader({
           topic,
           channel: 'reader',
           nsqd: ['127.0.0.1:4150'],
@@ -146,8 +148,8 @@ describe('Acceptance: Reader', () => {
       });
 
       it('should wait for in-flight messages and emit "close"', done => {
-        const pub = nsq.writer();
-        const sub = nsq.reader({
+        const pub = new Writer();
+        const sub = new Reader({
           topic,
           channel: 'reader',
           nsqd: ['127.0.0.1:4150'],
@@ -177,8 +179,8 @@ describe('Acceptance: Reader', () => {
       });
 
       it('should wait for pending messages and invoke the callback', done => {
-        const pub = nsq.writer();
-        const sub = nsq.reader({
+        const pub = new Writer();
+        const sub = new Reader({
           topic,
           channel: 'reader',
           nsqd: ['127.0.0.1:4150'],
@@ -208,7 +210,7 @@ describe('Acceptance: Reader', () => {
       });
 
       it('should close if there are no in-flight messages', done => {
-        const sub = nsq.reader({
+        const sub = new Reader({
           topic,
           channel: 'reader',
           nsqd: ['127.0.0.1:4150'],
@@ -219,7 +221,7 @@ describe('Acceptance: Reader', () => {
       });
 
       it('should stop polling nsqlookupd if reader had been closed', done => {
-        const sub = nsq.reader({
+        const sub = new Reader({
           topic,
           channel: 'reader',
           nsqlookupd: ['127.0.0.1:4161'],
@@ -239,7 +241,7 @@ describe('Acceptance: Reader', () => {
 
     describe('end()', () => {
       it('should end if there are no connections', done => {
-        const sub = nsq.reader({
+        const sub = new Reader({
           topic,
           channel: 'reader',
           nsqd: [],
@@ -249,7 +251,7 @@ describe('Acceptance: Reader', () => {
       });
 
       it('should end all connections', done => {
-        const sub = nsq.reader({
+        const sub = new Reader({
           topic,
           channel: 'reader',
           nsqd: ['127.0.0.1:4150']
@@ -265,9 +267,9 @@ describe('Acceptance: Reader', () => {
       });
 
       it('should end all connections even if there are in-flight messages', done => {
-        const pub = nsq.writer();
+        const pub = new Writer();
 
-        const sub = nsq.reader({
+        const sub = new Reader({
           topic,
           channel: 'reader',
           nsqd: ['127.0.0.1:4150'],
@@ -294,7 +296,7 @@ describe('Acceptance: Reader', () => {
       });
 
       it('should stop polling nsqlookupd if reader had been ended', done => {
-        const sub = nsq.reader({
+        const sub = new Reader({
           topic,
           channel: 'reader',
           nsqlookupd: ['127.0.0.1:4161'],
@@ -309,6 +311,55 @@ describe('Acceptance: Reader', () => {
         });
 
         setTimeout(done, 100);
+      });
+    });
+
+    describe('reader lifecycle', () => {
+      beforeEach(done => {
+        utils.createTopic(topic, done);
+      });
+
+      it('should remove connections that disconnect', done => {
+        const sub = new Reader({
+          topic,
+          channel: 'reader',
+          nsqd: ['127.0.0.1:4150'],
+          maxConnectionAttempts: 0
+        });
+
+        sub.on('subscribed', () => {
+          assert.equal(sub.conns.size, 1);
+
+          sub.conns.forEach(conn => {
+            conn.on('disconnect', () => {
+              assert.equal(sub.conns.size, 0);
+
+              done();
+            });
+
+            conn.sock.end();
+          });
+        });
+      });
+
+      it('should emit lookup errors', done => {
+        const sub = new Reader({
+          topic,
+          channel: 'reader',
+          nsqlookupd: ['127.0.0.1:4161'],
+          pollInterval: 10
+        });
+
+        sinon.stub(sub, 'lookup').onSecondCall().callsFake(fn => {
+          fn([new Error('foo')]);
+        });
+
+        sub.on('error lookup', error => {
+          assert.equal(error.message, 'foo');
+
+          done();
+        });
+
       });
     });
   });
