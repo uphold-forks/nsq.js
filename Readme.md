@@ -113,6 +113,7 @@ Events:
 
 - `message` (msg) incoming message
 - `discard` (msg) discarded message
+- `error lookup` (err) response from nsqlookup
 - `error response` (err) response from nsq
 - `error` (err)
 - `subscribed` (topic) name of the subscribed topic
