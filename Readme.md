@@ -105,9 +105,10 @@ Create a reader:
 - `maxConnectionAttempts` max reconnection attempts [Infinity]
 - `maxInFlight` max messages distributed across connections [10]
 - `msgTimeout` session-specific msg timeout
-- `pollInterval` nsqlookupd poll interval[10000]
+- `pollInterval` nsqlookupd poll interval [10000]
 - `ready` when `false` auto-RDY maintenance will be disabled
 - `trace` trace function
+- `healthCheck` setup health check [false]
 
 Events:
 
@@ -133,6 +134,7 @@ an address string is passed, or an object with the nsqd option:
 
 - `nsqd` array of nsqd addresses
 - `maxConnectionAttempts` max reconnection attempts [Infinity]
+- `healthCheck` setup health check [false]
 
 Events:
 
