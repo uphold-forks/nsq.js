@@ -1,6 +1,6 @@
 {
   "name": "@uphold/nsq.js",
-  "version": "0.17.2",
+  "version": "0.18.0",
   "repository": "uphold-forks/nsq.js",
   "description": "NSQ client actually written in javascript",
   "license": "MIT",
