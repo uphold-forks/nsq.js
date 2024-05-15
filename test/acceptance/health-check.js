@@ -106,12 +106,37 @@ describe('Acceptance: Health Check', () => {
         });
       });
 
-      it('should show that lookups are failing', done => {
+      it('should consider `TOPIC_NOT_FOUND` errors to be a successful lookup', done => {
         const reader = new Reader({
           topic: topic + '1',
           channel: 'reader',
           healthCheck: true,
           nsqlookupd: ['127.0.0.1:4161']
+        });
+
+        setTimeout(() => {
+          try {
+            const healthCheck = reader.getHealthStatus();
+
+            assert.equal(healthCheck.connections.active, 0);
+            assert.equal(healthCheck.lookups.active, 1);
+            assert.equal(healthCheck.lookups.expected, 1);
+
+            reader.end();
+
+            done();
+          } catch (error) {
+            done(error);
+          }
+        }, 50);
+      });
+
+      it('should show that lookups are failing', done => {
+        const reader = new Reader({
+          topic: topic,
+          channel: 'reader',
+          healthCheck: true,
+          nsqlookupd: ['127.0.0.1:4160']
         });
 
         setTimeout(() => {

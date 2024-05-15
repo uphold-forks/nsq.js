@@ -7,7 +7,6 @@
 const assert = require('node:assert');
 const Reader = require('../../lib/reader');
 const Writer = require('../../lib/writer');
-const sinon = require('sinon');
 const uid = require('uid');
 const utils = require('../utils');
 
@@ -344,18 +343,13 @@ describe('Acceptance: Reader', () => {
 
       it('should emit lookup errors', done => {
         const sub = new Reader({
-          topic,
+          topic: `${topic}1`,
           channel: 'reader',
-          nsqlookupd: ['127.0.0.1:4161'],
-          pollInterval: 10
+          nsqlookupd: ['127.0.0.1:4161']
         });
 
-        sinon.stub(sub, 'lookup').onSecondCall().callsFake(fn => {
-          fn([new Error('foo')]);
-        });
-
-        sub.on('error lookup', error => {
-          assert.equal(error.message, 'foo');
+        sub.once('error lookup', error => {
+          assert.equal(error.response.body.message, 'TOPIC_NOT_FOUND');
 
           done();
         });
