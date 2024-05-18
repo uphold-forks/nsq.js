@@ -9,8 +9,8 @@ const request = require('superagent');
 /**
  * Delete `topic`.
  *
- * @param {String} topic
- * @param {Function} fn
+ * @param {string} topic - Topic name.
+ * @param {Function} fn - Callback.
  */
 
 module.exports.deleteTopic = (topic, fn) => {
@@ -20,13 +20,22 @@ module.exports.deleteTopic = (topic, fn) => {
 /**
  * Create `topic`.
  *
- * @param {String} topic
- * @param {Function} fn
+ * @param {string} topic - Topic name.
+ * @param {Function} fn - Callback.
  */
 
 module.exports.createTopic = (topic, fn) => {
   req(topic, 'create', fn);
 };
+
+/**
+ * Publish `topic`.
+ *
+ * @param {string} topic - Topic name.
+ * @param {string} cmd - Command.
+ * @param {Function} fn - Callback.
+ * @function req
+ */
 
 function req(topic, cmd, fn) {
   request
@@ -51,4 +60,3 @@ module.exports.framerData = [
   '0000002f00000002135a2ad167d76e45000130363236323534303166363566303038736f6d65206d6573736167652068657265',
   '062625401f65f008'
 ];
-

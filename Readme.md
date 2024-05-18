@@ -4,18 +4,18 @@ JavaScript NSQ client WIP.
 
 ## Features
 
-- actually written in js :p
+- actually written in JS :p
 - easier debugging via [debug()](https://github.com/visionmedia/debug) instrumentation
-- native json message support
+- native JSON message support
 - does not arbitrarily apply backoff on requeues
 - disabling of auto-RDY support for manual control (high throughput etc)
-- reconnection to dead nsqd nodes
+- reconnection to dead `nsqd` nodes
 - graceful close support
 
 ## Installation
 
-```
-$ npm install @uphold/nsq.js
+```sh
+npm install @uphold/nsq.js
 ```
 
 ## About
@@ -26,7 +26,7 @@ The __DEBUG__ environment variable can be used to enable
 traces within the module, for example all nsq debug() calls
 except fo the framer:
 
-```
+```sh
 $ DEBUG=nsq*,-nsq:framer node test
 
 nsq:reader connect nsqd 0.0.0.0:4150 events/ingestion [5] +0ms
@@ -187,11 +187,11 @@ The following [jstrace](https://github.com/jstrace/jstrace) probes are available
 
 ## Running tests
 
-```
+```sh
 docker-compose up -d nsqlookupd nsqd
 make test
 ```
 
-# License
+## License
 
 MIT

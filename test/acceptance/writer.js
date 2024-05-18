@@ -22,7 +22,6 @@ describe('Acceptance: Writer', () => {
     topic = uid();
   });
 
-
   describe('Writer', () => {
     describe('publish()', () => {
       it('should publish messages', done => {

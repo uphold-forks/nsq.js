@@ -38,7 +38,7 @@ describe('Message', () => {
 
       msg.body = Buffer.from('{"foo":"bar"}');
 
-      // TODO.
+      /** @todo */
       assert.deepEqual(msg.json(), { foo: 'bar' });
     });
   });

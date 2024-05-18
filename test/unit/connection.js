@@ -105,7 +105,7 @@ describe('Connection', () => {
 
       conn.on('ready', () => {
         // ignore 'invalid state' error due to not having callbacks.
-        conn.on('error', function() {});
+        conn.on('error', function () {});
 
         conn.on('discard', () => {
           throw new Error('discard should not be called');
