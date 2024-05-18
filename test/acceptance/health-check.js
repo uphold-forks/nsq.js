@@ -4,13 +4,13 @@
  * Module dependencies.
  */
 
-const assert = require('node:assert');
+const Connection = require('../../lib/connection');
 const Reader = require('../../lib/reader');
 const Writer = require('../../lib/writer');
+const assert = require('node:assert');
 const sinon = require('sinon');
 const uid = require('uid');
 const utils = require('../utils');
-const Connection = require('../../lib/connection');
 
 describe('Acceptance: Health Check', () => {
   describe('Reader', () => {

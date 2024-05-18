@@ -10,9 +10,9 @@ const Writer = require('./lib/writer');
 /**
  * Create a new reader.
  *
- * @param {Object} options
- * @return {Writer}
- * @api public
+ * @param {object} options Reader options.
+ * @returns {Reader} NSQ reader.
+ * @public
  */
 
 module.exports.reader = options => new Reader(options);
@@ -20,9 +20,9 @@ module.exports.reader = options => new Reader(options);
 /**
  * Create a new writer.
  *
- * @param {Object} options
- * @return {Writer}
- * @api public
+ * @param {object} options Writer options.
+ * @returns {Writer} NSQ writer.
+ * @public
  */
 
 module.exports.writer = options => new Writer(options);
